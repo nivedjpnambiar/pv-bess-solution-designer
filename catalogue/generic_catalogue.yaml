@@ -1,0 +1,19 @@
+# Vendor-neutral product catalogue (illustrative values only).
+# Replace with datasheet values of a real product family to configure it.
+# The sizing picks the unit that meets the target with the least oversizing.
+
+battery_units:
+  - id: BC-5000
+    description: 20 ft LFP battery container, liquid cooled (generic)
+    nameplate_mwh: 5.0
+  - id: BC-3700
+    description: 20 ft LFP battery container, compact (generic)
+    nameplate_mwh: 3.7
+
+pcs_units:
+  - id: PCS-2500
+    description: Bidirectional PCS skid incl. MV transformer (generic)
+    rated_mw: 2.5
+  - id: PCS-3450
+    description: Bidirectional PCS skid incl. MV transformer, high power (generic)
+    rated_mw: 3.45

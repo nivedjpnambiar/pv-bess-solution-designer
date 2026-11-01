@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Technical proposal: BESS for {{ cfg.project.name }}</title>
+<style>
+  :root {
+    --surface: #fcfcfb; --surface-2: #f3f2ef; --text: #0b0b0b; --text-2: #52514e; --muted: #7c7b76;
+    --line: #e4e3df; --accent: #2a78d6; --pv: #eb6834; --warn-bg: #fff4dc; --warn-line: #eda100;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--text);
+         font: 14px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 28px 64px; }
+  header { border-bottom: 2px solid var(--text); padding-bottom: 14px; margin-bottom: 22px; }
+  .kicker { color: var(--text-2); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+  h1 { font-size: 26px; margin: 4px 0 6px; line-height: 1.2; }
+  h2 { font-size: 18px; margin: 34px 0 10px; padding-top: 6px; border-top: 1px solid var(--line); }
+  h3 { font-size: 14px; margin: 18px 0 6px; }
+  .meta { color: var(--text-2); font-size: 13px; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-line); padding: 10px 14px;
+            margin: 0 0 20px; font-size: 13px; }
+  .summary { background: var(--surface-2); border-radius: 8px; padding: 18px 20px; }
+  .summary .headline { font-size: 20px; font-weight: 700; margin: 2px 0 4px; }
+  .summary .sub { color: var(--text-2); margin-bottom: 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+  .tile .v { font-size: 19px; font-weight: 700; }
+  .tile .l { color: var(--text-2); font-size: 12px; }
+  ul.reasons { margin: 14px 0 0; padding-left: 18px; }
+  ul.reasons li { margin-bottom: 4px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; margin: 8px 0; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th { color: var(--text-2); font-weight: 600; background: var(--surface-2); }
+  th:first-child, td:first-child { text-align: left; }
+  td.l, th.l { text-align: left; }
+  tr.rec td { font-weight: 700; background: #eaf2fc; }
+  .kv td:first-child { color: var(--text-2); width: 46%; }
+  .kv td { text-align: left; white-space: normal; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  figure { margin: 12px 0; }
+  figure img { width: 100%; height: auto; display: block; }
+  figcaption { color: var(--text-2); font-size: 12px; margin-top: 4px; }
+  .note { color: var(--text-2); font-size: 12.5px; }
+  .svgwrap svg { width: 100%; height: auto; }
+  ol.assume li { margin-bottom: 4px; font-size: 13px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+  @media print { main { padding: 0; } h2 { break-after: avoid; } figure, table, .summary { break-inside: avoid; } }
+  @media (max-width: 700px) { .tiles { grid-template-columns: repeat(2, 1fr); } .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="kicker">Technical proposal · Battery energy storage</div>
+  <h1>{{ cfg.project.name }}</h1>
+  <div class="meta">Customer: {{ cfg.project.customer }} · Site: {{ cfg.project.location.name }}
+    ({{ cfg.project.location.lat }}, {{ cfg.project.location.lon }}) · {{ today }}</div>
+  <div class="meta">Use case: {{ cfg.project.use_case }}</div>
+</header>
+
+{% if cfg.data.synthetic %}
+<div class="banner"><strong>Demo data.</strong> This report was built with synthetic weather and price
+  data so the tool runs offline. The numbers show how the method works, they are not a real site
+  assessment. Run <code>bess-designer fetch-data</code> to use PVGIS and SMARD data.</div>
+{% endif %}
+
+<section class="summary">
+  <div class="kicker">Recommendation</div>
+  <div class="headline">{{ rec.config.power_mw|f(0) }} MW / {{ rec.config.usable_mwh|f(1) }} MWh usable BESS</div>
+  <div class="sub">{{ rec.config.n_battery_units }} × {{ rec.config.battery_unit.id }} battery containers
+    ({{ rec.config.nameplate_mwh|f(1) }} MWh nameplate) and {{ rec.config.n_pcs_units }} × {{ rec.config.pcs_unit.id }}
+    power conversion units, AC-coupled at the PV plant's medium-voltage busbar.</div>
+  <div class="tiles">
+    <div class="tile"><div class="v">{{ (rec.kpis.capex_eur/1e6)|f(1) }} M€</div><div class="l">Investment (CAPEX)</div></div>
+    <div class="tile"><div class="v">{{ (rec.tech.extra_revenue_eur/1e3)|f(0) }} k€</div><div class="l">Extra revenue, year 1</div></div>
+    <div class="tile"><div class="v">{{ (rec.kpis.npv_eur/1e6)|f(2) }} M€</div><div class="l">NPV over {{ cfg.economics.project_life_years }} years</div></div>
+    <div class="tile"><div class="v">{{ rec.kpis.simple_payback_years|f(1, ' a') }}</div><div class="l">Simple payback</div></div>
+    <div class="tile"><div class="v">{{ (rec.kpis.irr*100 if rec.kpis.irr is not none else none)|f(1, ' %') }}</div><div class="l">Project IRR</div></div>
+    <div class="tile"><div class="v">{{ rec.tech.equivalent_full_cycles|f(0) }}</div><div class="l">Full cycles per year</div></div>
+    <div class="tile"><div class="v">{{ rec.tech.curtailment_recovered_mwh|f(0) }} MWh</div><div class="l">PV curtailment recovered</div></div>
+    <div class="tile"><div class="v">{{ rec.tech.avg_discharge_price|f(0) }} €</div><div class="l">Avg. price when discharging (per MWh)</div></div>
+  </div>
+  <ul class="reasons">{% for r in reasoning %}<li>{{ r }}</li>{% endfor %}</ul>
+</section>
+
+<h2>1. Customer requirements and site</h2>
+<div class="two">
+  <table class="kv">
+    <tr><td>PV plant</td><td>{{ cfg.site.pv_dc_mwp|f(1) }} MWp DC / {{ cfg.site.pv_ac_mw|f(1) }} MW AC
+      (DC/AC {{ (cfg.site.pv_dc_mwp / cfg.site.pv_ac_mw)|f(2) }})</td></tr>
+    <tr><td>Grid connection (export / import)</td><td>{{ cfg.site.grid_export_limit_mw|f(1) }} MW / {{ cfg.site.grid_import_limit_mw|f(1) }} MW</td></tr>
+    <tr><td>Grid charging of the BESS</td><td>{{ 'allowed' if cfg.site.allow_grid_charging else 'not allowed (PV only)' }}</td></tr>
+    <tr><td>PV orientation</td><td>tilt {{ cfg.site.pv_tilt_deg|f(0) }}°, azimuth {{ cfg.site.pv_azimuth_deg|f(0) }}°</td></tr>
+    <tr><td>Options studied</td><td>{{ cfg.options.power_mw|map('g')|join(', ') }} MW × {{ cfg.options.duration_h|map('g')|join(', ') }} h</td></tr>
+  </table>
+  <table class="kv">
+    <tr><td>PV energy available</td><td>{{ s.site.pv_energy_mwh|f(0) }} MWh/a ({{ s.site.specific_yield_kwh_per_kwp|f(0) }} kWh/kWp)</td></tr>
+    <tr><td>Average day-ahead price</td><td>{{ s.site.mean_price|f(1) }} €/MWh</td></tr>
+    <tr><td>PV capture price (no BESS)</td><td>{{ s.site.pv_capture_price|f(1) }} €/MWh</td></tr>
+    <tr><td>Hours with negative prices</td><td>{{ s.site.negative_price_hours }} h</td></tr>
+    <tr><td>PV curtailed without BESS</td><td>{{ s.site.baseline_curtailed_mwh|f(0) }} MWh/a
+      ({{ s.site.curtailed_negative_price_mwh|f(0) }} negative prices, {{ s.site.curtailed_grid_limit_mwh|f(0) }} grid limit)</td></tr>
+    <tr><td>PV-only revenue</td><td>{{ (s.site.baseline_revenue_eur/1e6)|f(2) }} M€/a</td></tr>
+  </table>
+</div>
+<figure><img alt="Price duration curve" src="data:image/png;base64,{{ imgs.prices }}">
+  <figcaption>The PV plant sells mostly in hours when many other PV plants also produce, so it earns
+    less than the average price. The BESS moves energy from those hours to the evening.</figcaption></figure>
+
+<h2>2. Proposed solution</h2>
+<div class="svgwrap">
+<svg viewBox="0 0 760 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Single-line block diagram">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#52514e"/></marker></defs>
+  <style>
+    .b { fill: #fcfcfb; stroke: #52514e; stroke-width: 1.2; rx: 6; }
+    .t { font: 600 12px system-ui, Arial, sans-serif; fill: #0b0b0b; }
+    .s { font: 11px system-ui, Arial, sans-serif; fill: #52514e; }
+    .w { stroke: #52514e; stroke-width: 1.4; fill: none; }
+  </style>
+  <!-- PV branch -->
+  <rect class="b" x="10" y="20" width="150" height="56"/><rect x="10" y="20" width="5" height="56" fill="#eb6834"/>
+  <text class="t" x="24" y="43">PV array</text><text class="s" x="24" y="61">{{ cfg.site.pv_dc_mwp|f(1) }} MWp DC</text>
+  <rect class="b" x="200" y="20" width="160" height="56"/><rect x="200" y="20" width="5" height="56" fill="#eb6834"/>
+  <text class="t" x="214" y="43">PV inverters</text><text class="s" x="214" y="61">{{ cfg.site.pv_ac_mw|f(1) }} MW AC</text>
+  <line class="w" x1="160" y1="48" x2="198" y2="48" marker-end="url(#arr)"/>
+  <line class="w" x1="360" y1="48" x2="418" y2="48" marker-end="url(#arr)"/>
+  <!-- BESS branch -->
+  <rect class="b" x="10" y="124" width="150" height="66"/><rect x="10" y="124" width="5" height="66" fill="#2a78d6"/>
+  <text class="t" x="24" y="147">Battery</text>
+  <text class="s" x="24" y="164">{{ rec.config.n_battery_units }} × {{ rec.config.battery_unit.id }}</text>
+  <text class="s" x="24" y="180">{{ rec.config.nameplate_mwh|f(1) }} MWh nameplate</text>
+  <rect class="b" x="200" y="124" width="160" height="66"/><rect x="200" y="124" width="5" height="66" fill="#2a78d6"/>
+  <text class="t" x="214" y="147">PCS + MV transformers</text>
+  <text class="s" x="214" y="164">{{ rec.config.n_pcs_units }} × {{ rec.config.pcs_unit.id }}</text>
+  <text class="s" x="214" y="180">{{ rec.config.power_mw|f(1) }} MW</text>
+  <line class="w" x1="160" y1="157" x2="198" y2="157" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <line class="w" x1="360" y1="157" x2="418" y2="157" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <!-- MV busbar -->
+  <line x1="424" y1="14" x2="424" y2="196" stroke="#0b0b0b" stroke-width="5"/>
+  <text class="s" x="432" y="200">MV busbar</text>
+  <!-- POI -->
+  <line class="w" x1="428" y1="102" x2="488" y2="102" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <rect class="b" x="490" y="70" width="140" height="64"/>
+  <text class="t" x="502" y="94">Grid connection</text>
+  <text class="s" x="502" y="112">export ≤ {{ cfg.site.grid_export_limit_mw|f(0) }} MW</text>
+  <text class="s" x="502" y="126">import ≤ {{ cfg.site.grid_import_limit_mw|f(0) }} MW</text>
+  <line class="w" x1="630" y1="102" x2="668" y2="102" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <rect class="b" x="670" y="78" width="82" height="48"/>
+  <text class="t" x="684" y="106">Grid</text>
+</svg>
+</div>
+<p class="note">AC-coupled layout: the BESS has its own power conversion and shares the PV plant's
+  grid connection. Export of PV and BESS together is limited to the grid connection capacity.</p>
+
+<h3>Main equipment (recommended option)</h3>
+<table>
+  <tr><th class="l">Item</th><th class="l">Type</th><th>Qty</th><th>Unit rating</th><th>Total</th></tr>
+  <tr><td>Battery container</td><td class="l">{{ rec.config.battery_unit.description }}</td><td>{{ rec.config.n_battery_units }}</td>
+      <td>{{ rec.config.battery_unit.nameplate_mwh|f(2) }} MWh</td><td>{{ rec.config.nameplate_mwh|f(1) }} MWh</td></tr>
+  <tr><td>Power conversion</td><td class="l">{{ rec.config.pcs_unit.description }}</td><td>{{ rec.config.n_pcs_units }}</td>
+      <td>{{ rec.config.pcs_unit.rated_mw|f(2) }} MW</td><td>{{ rec.config.power_mw|f(1) }} MW</td></tr>
+</table>
+
+<h2>3. Options compared</h2>
+<figure><img alt="NPV by option" src="data:image/png;base64,{{ imgs.npv }}"></figure>
+<table>
+  <tr><th>Rank</th><th class="l">Option</th><th>Usable MWh</th><th>CAPEX M€</th><th>Extra rev. k€/a</th>
+      <th>Cycles/a</th><th>NPV M€</th><th>IRR</th><th>Payback a</th><th>LCOS €/MWh</th></tr>
+  {% for r in table %}
+  <tr class="{{ 'rec' if r.rank == 1 else '' }}"><td>{{ r.rank }}</td><td class="l">{{ r.option }}</td>
+    <td>{{ r.usable_mwh|f(1) }}</td><td>{{ r.capex_meur|f(2) }}</td><td>{{ r.year1_extra_revenue_keur|f(0) }}</td>
+    <td>{{ r.cycles_per_year|f(0) }}</td><td>{{ r.npv_meur|f(2) }}</td><td>{{ r.irr_pct|f(1, ' %') }}</td>
+    <td>{{ r.payback_years|f(1) }}</td><td>{{ r.lcos_eur_per_mwh|f(0) }}</td></tr>
+  {% endfor %}
+</table>
+<p class="note">Usable energy can be larger than power × duration because whole containers are installed.
+  LCOS excludes the cost of the charging energy.</p>
+
+<h2>4. How the BESS operates</h2>
+<figure><img alt="Example dispatch" src="data:image/png;base64,{{ imgs.dispatch }}">
+  <figcaption>Above zero: energy fed into the grid. Below zero: energy stored in the battery. Where the PV line is above the orange area, that PV energy goes into the battery or is curtailed.
+    Times in local time (Europe/Berlin).</figcaption></figure>
+<figure><img alt="Monthly extra revenue" src="data:image/png;base64,{{ imgs.monthly }}"></figure>
+<table class="kv">
+  <tr><td>Energy discharged</td><td>{{ rec.tech.discharged_mwh|f(0) }} MWh/a</td></tr>
+  <tr><td>Charged from PV / from grid</td><td>{{ rec.tech.pv_charged_mwh|f(0) }} MWh / {{ rec.tech.grid_charged_mwh|f(0) }} MWh</td></tr>
+  <tr><td>Average price when charging / discharging</td><td>{{ rec.tech.avg_charge_price|f(1) }} / {{ rec.tech.avg_discharge_price|f(1) }} €/MWh</td></tr>
+  <tr><td>Model check: simultaneous charge and discharge</td><td>{{ rec.tech.simultaneous_mwh|f(1) }} MWh/a (should be close to 0)</td></tr>
+</table>
+
+<h2>5. Sensitivity of the recommendation</h2>
+<table>
+  <tr><th class="l">Case</th><th>Extra rev. k€/a</th><th>Cycles/a</th><th>NPV M€</th><th>Δ NPV M€</th><th>IRR</th><th>Payback a</th></tr>
+  {% for r in sens %}
+  <tr><td>{{ r.case }}</td><td>{{ r.year1_extra_revenue_keur|f(0) }}</td><td>{{ r.cycles_per_year|f(0) }}</td>
+      <td>{{ r.npv_meur|f(2) }}</td><td>{{ r.npv_change_meur|f(2) }}</td><td>{{ r.irr_pct|f(1, ' %') }}</td><td>{{ r.payback_years|f(1) }}</td></tr>
+  {% endfor %}
+</table>
+
+<h2>6. Assumptions and limits of this study</h2>
+<ol class="assume">{% for a in assumptions %}<li>{{ a }}</li>{% endfor %}</ol>
+
+<h2>7. Method</h2>
+<p class="note">For every option the hourly operation of PV plant and BESS is optimised over one year with a
+  linear program (HiGHS solver): maximise market revenue subject to the PV energy balance, the battery
+  energy balance with charge and discharge losses, power and energy limits, the grid connection limit and
+  a daily cycle limit. The same PV plant without storage is the reference case; all values above are the
+  difference to it. Equipment counts come from the product catalogue, and the cash flows over the project
+  lifetime give NPV, IRR, payback and LCOS.</p>
+
+<footer>Generated with pv-bess-solution-designer · Requirement file: {{ cfg.source_file.name if cfg.source_file else 'n/a' }}
+  · Data: {{ cfg.data.label }}</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,59 @@
+# Customer requirement: co-located BESS for a 50 MWp solar park (fictional example)
+#
+# Situation: the PV plant is built larger than its grid connection
+# (50 MWp DC / 42 MW AC behind a 30 MW grid connection). Midday output above
+# 30 MW is lost today, and in negative-price hours the plant is switched off.
+# Question from the customer: which battery size makes sense?
+
+project:
+  name: Solarpark Example Brandenburg
+  customer: Example Energy GmbH (fictional)
+  use_case: Recover curtailed PV, shift PV to evening hours, day-ahead arbitrage
+  location:
+    name: Brandenburg, Germany
+    lat: 52.35
+    lon: 14.05
+
+site:
+  pv_dc_mwp: 50.0
+  pv_ac_mw: 42.0               # inverter AC rating
+  grid_export_limit_mw: 30.0   # grid connection capacity at the POI
+  grid_import_limit_mw: 30.0
+  allow_grid_charging: true
+  pv_tilt_deg: 25
+  pv_azimuth_deg: 180          # south
+  pv_system_loss_pct: 14
+
+data:
+  year: 2023                   # PVGIS hourly data ends a few years back (2023 at the time of writing)
+  # Demo data (synthetic) so the repo runs offline. For a real study run:
+  #   bess-designer fetch-data examples/brandenburg_50mwp.yaml
+  # and switch the two paths below to data/real/... (the command prints them).
+  pv_profile_csv: data/demo/pv_profile_per_kwp_2023.csv
+  price_csv: data/demo/day_ahead_prices_2023.csv
+  label: Synthetic demo data (not real market data)
+  synthetic: true
+
+options:
+  power_mw: [10, 20, 30]      # up to the grid connection capacity
+  duration_h: [1, 2, 4]
+  rank_by: npv                 # npv | irr | payback
+
+battery:
+  roundtrip_efficiency: 0.88   # AC-AC incl. PCS and transformer
+  soc_min: 0.05
+  soc_max: 0.95
+  soc_initial: 0.5
+  max_cycles_per_day: 1.5      # warranty-style throughput limit
+  degradation_cost_eur_per_mwh: 5   # wear cost used only inside the dispatch
+  annual_capacity_fade: 0.02
+
+economics:                     # illustrative assumptions, adjust per project
+  capex_energy_eur_per_kwh: 180     # per kWh nameplate
+  capex_power_eur_per_kw: 70
+  opex_pct_of_capex: 0.015
+  grid_charging_fee_eur_per_mwh: 0  # storage is largely exempt from grid fees in DE (check per project)
+  project_life_years: 15
+  discount_rate: 0.07
+
+catalogue: catalogue/generic_catalogue.yaml

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pv-bess-solution-designer"
+version = "0.1.0"
+description = "Sizing and technical-economic screening of battery storage for utility-scale PV plants"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Nived Jayaprakash Nambiar" }]
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.11",
+    "pvlib>=0.10",
+    "pyyaml>=6.0",
+    "jinja2>=3.1",
+    "matplotlib>=3.7",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.30"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+bess-designer = "bess_designer.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+bess_designer = ["templates/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

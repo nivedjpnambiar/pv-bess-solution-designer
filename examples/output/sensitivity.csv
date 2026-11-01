@@ -1,0 +1,7 @@
+case,year1_extra_revenue_keur,cycles_per_year,npv_meur,npv_change_meur,irr_pct,payback_years
+Base case,2490.930,547.500,3.366,0.000,10.721,6.926
+CAPEX -20 %,2490.930,547.500,6.708,3.342,15.830,5.332
+CAPEX +20 %,2490.930,547.500,0.024,-3.342,7.024,8.670
+No grid charging (PV only),1665.377,266.681,-3.287,-6.653,2.984,11.592
+Max 1 cycle per day,2235.885,365.000,1.311,-2.055,8.486,7.900
+Round-trip efficiency 0.85,2390.269,547.500,2.555,-0.811,9.852,7.281
